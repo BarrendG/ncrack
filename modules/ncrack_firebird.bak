@@ -1,0 +1,1665 @@
+/***************************************************************************
+ * ncrack_firebird.cc -- ncrack module for firebird database               *                   *
+ * Created by Barrend                                                      *
+ *                                                                         *
+ ***********************IMPORTANT NMAP LICENSE TERMS************************
+ *                                                                         *
+ * The Nmap Security Scanner is (C) 1996-2018 Insecure.Com LLC ("The Nmap  *
+ * Project"). Nmap is also a registered trademark of the Nmap Project.     *
+ * This program is free software; you may redistribute and/or modify it    *
+ * under the terms of the GNU General Public License as published by the   *
+ * Free Software Foundation; Version 2 ("GPL"), BUT ONLY WITH ALL OF THE   *
+ * CLARIFICATIONS AND EXCEPTIONS DESCRIBED HEREIN.  This guarantees your   *
+ * right to use, modify, and redistribute this software under certain      *
+ * conditions.  If you wish to embed Nmap technology into proprietary      *
+ * software, we sell alternative licenses (contact sales@nmap.com).        *
+ * Dozens of software vendors already license Nmap technology such as      *
+ * host discovery, port scanning, OS detection, version detection, and     *
+ * the Nmap Scripting Engine.                                              *
+ *                                                                         *
+ * Note that the GPL places important restrictions on "derivative works",  *
+ * yet it does not provide a detailed definition of that term.  To avoid   *
+ * misunderstandings, we interpret that term as broadly as copyright law   *
+ * allows.  For example, we consider an application to constitute a        *
+ * derivative work for the purpose of this license if it does any of the   *
+ * following with any software or content covered by this license          *
+ * ("Covered Software"):                                                   *
+ *                                                                         *
+ * o Integrates source code from Covered Software.                         *
+ *                                                                         *
+ * o Reads or includes copyrighted data files, such as Nmap's nmap-os-db   *
+ * or nmap-service-probes.                                                 *
+ *                                                                         *
+ * o Is designed specifically to execute Covered Software and parse the    *
+ * results (as opposed to typical shell or execution-menu apps, which will *
+ * execute anything you tell them to).                                     *
+ *                                                                         *
+ * o Includes Covered Software in a proprietary executable installer.  The *
+ * installers produced by InstallShield are an example of this.  Including *
+ * Nmap with other software in compressed or archival form does not        *
+ * trigger this provision, provided appropriate open source decompression  *
+ * or de-archiving software is widely available for no charge.  For the    *
+ * purposes of this license, an installer is considered to include Covered *
+ * Software even if it actually retrieves a copy of Covered Software from  *
+ * another source during runtime (such as by downloading it from the       *
+ * Internet).                                                              *
+ *                                                                         *
+ * o Links (statically or dynamically) to a library which does any of the  *
+ * above.                                                                  *
+ *                                                                         *
+ * o Executes a helper program, module, or script to do any of the above.  *
+ *                                                                         *
+ * This list is not exclusive, but is meant to clarify our interpretation  *
+ * of derived works with some common examples.  Other people may interpret *
+ * the plain GPL differently, so we consider this a special exception to   *
+ * the GPL that we apply to Covered Software.  Works which meet any of     *
+ * these conditions must conform to all of the terms of this license,      *
+ * particularly including the GPL Section 3 requirements of providing      *
+ * source code and allowing free redistribution of the work as a whole.    *
+ *                                                                         *
+ * As another special exception to the GPL terms, the Nmap Project grants  *
+ * permission to link the code of this program with any version of the     *
+ * OpenSSL library which is distributed under a license identical to that  *
+ * listed in the included docs/licenses/OpenSSL.txt file, and distribute   *
+ * linked combinations including the two.                                  *
+ *                                                                         *
+ * The Nmap Project has permission to redistribute Npcap, a packet         *
+ * capturing driver and library for the Microsoft Windows platform.        *
+ * Npcap is a separate work with it's own license rather than this Nmap    *
+ * license.  Since the Npcap license does not permit redistribution        *
+ * without special permission, our Nmap Windows binary packages which      *
+ * contain Npcap may not be redistributed without special permission.      *
+ *                                                                         *
+ * Any redistribution of Covered Software, including any derived works,    *
+ * must obey and carry forward all of the terms of this license, including *
+ * obeying all GPL rules and restrictions.  For example, source code of    *
+ * the whole work must be provided and free redistribution must be         *
+ * allowed.  All GPL references to "this License", are to be treated as    *
+ * including the terms and conditions of this license text as well.        *
+ *                                                                         *
+ * Because this license imposes special exceptions to the GPL, Covered     *
+ * Work may not be combined (even as part of a larger work) with plain GPL *
+ * software.  The terms, conditions, and exceptions of this license must   *
+ * be included as well.  This license is incompatible with some other open *
+ * source licenses as well.  In some cases we can relicense portions of    *
+ * Nmap or grant special permissions to use it in other open source        *
+ * software.  Please contact fyodor@nmap.org with any such requests.       *
+ * Similarly, we don't incorporate incompatible open source software into  *
+ * Covered Software without special permission from the copyright holders. *
+ *                                                                         *
+ * If you have any questions about the licensing restrictions on using     *
+ * Nmap in other works, we are happy to help.  As mentioned above, we also *
+ * offer an alternative license to integrate Nmap into proprietary         *
+ * applications and appliances.  These contracts have been sold to dozens  *
+ * of software vendors, and generally include a perpetual license as well  *
+ * as providing support and updates.  They also fund the continued         *
+ * development of Nmap.  Please email sales@nmap.com for further           *
+ * information.                                                            *
+ *                                                                         *
+ * If you have received a written license agreement or contract for        *
+ * Covered Software stating terms other than these, you may choose to use  *
+ * and redistribute Covered Software under those terms instead of these.   *
+ *                                                                         *
+ * Source is provided to this software because we believe users have a     *
+ * right to know exactly what a program is going to do before they run it. *
+ * This also allows you to audit the software for security holes.          *
+ *                                                                         *
+ * Source code also allows you to port Nmap to new platforms, fix bugs,    *
+ * and add new features.  You are highly encouraged to send your changes   *
+ * to the dev@nmap.org mailing list for possible incorporation into the    *
+ * main distribution.  By sending these changes to Fyodor or one of the    *
+ * Insecure.Org development mailing lists, or checking them into the Nmap  *
+ * source code repository, it is understood (unless you specify            *
+ * otherwise) that you are offering the Nmap Project the unlimited,        *
+ * non-exclusive right to reuse, modify, and relicense the code.  Nmap     *
+ * will always be available Open Source, but this is important because     *
+ * the inability to relicense code has caused devastating problems for     *
+ * other Free Software projects (such as KDE and NASM).  We also           *
+ * occasionally relicense the code to third parties as discussed above.    *
+ * If you wish to specify special license conditions of your               *
+ * contributions, just say so when you send them.                          *
+ *                                                                         *
+ * This program is distributed in the hope that it will be useful, but     *
+ * WITHOUT ANY WARRANTY; without even the implied warranty of              *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the Nmap      *
+ * license file for more details (it's in a COPYING file included with     *
+ * Nmap, and also available from https://svn.nmap.org/nmap/COPYING)        *
+ *                                                                         *
+ ***************************************************************************/
+#include "ncrack.h"
+#include "nsock.h"
+#include "NcrackOps.h"
+#include "Service.h"
+#include "modules.h"
+#include "atomic"
+#define FB_TIMEOUT 20000 //here
+#define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
+
+#include <unistd.h>   // isatty()
+#include <stdlib.h>
+#include <stdio.h>
+//#include "io.h"
+#include <string.h>
+#define API_ROUTINE
+
+extern NcrackOps o;
+
+extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
+extern void ncrack_module_end(nsock_pool nsp, void *mydata);
+
+//typedef unsigned char* VoidPtr;
+typedef void* VoidPtr;
+//----------------------------------------------------------------
+
+#define LINEFORMAT "d"
+//#define ISQL_ALLOC(x)	gds__alloc(x)
+#define ISQL_ALLOC(x)	gds__alloc(long)
+#define fb_assert(x) assert(x) //fb_assert definition
+//VoidPtr API_ROUTINE gds__alloc(signed long);
+
+#ifdef FB_NO_THROW_SPECIFIER
+#define FB_THROW(x)
+#define FB_NOTHROW noexcept
+#else
+#define FB_THROW(x) throw(x)
+#define FB_NOTHROW throw()
+#endif
+
+#define OOM_EXCEPTION std::bad_alloc
+
+
+#define ALLOC_ALIGNMENT 16
+typedef intptr_t IPTR;
+typedef uintptr_t U_IPTR;
+
+//-----------gds_proto.h------------------------------
+
+#ifndef JRD_GDS_PROTO_H
+#define JRD_GDS_PROTO_H
+
+
+const signed short IB_PREFIX_TYPE     = 0;
+const signed short IB_PREFIX_LOCK_TYPE  = 1;
+const signed short IB_PREFIX_MSG_TYPE   = 2;
+// flags for gds_alloc_report
+const unsigned long ALLOC_dont_report = 1L << 0;  /* Don't report this block */
+const unsigned long ALLOC_silent    = 1L << 1;  /* Don't report new leaks */
+const unsigned long ALLOC_verbose   = 1L << 2;  /* Report all leaks, even old */
+const unsigned long ALLOC_mark_current  = 1L << 3;  /* Mark all current leaks */
+const unsigned long ALLOC_check_each_call = 1L << 4;  /* Check memory integrity on each alloc/free call */
+const unsigned long ALLOC_dont_check  = 1L << 5;  /* Stop checking integrity on each call */
+
+#ifdef __cplusplus
+namespace Firebird
+{
+  class MemoryPool;
+}
+
+extern "C" {
+#endif
+
+typedef void* VoidPtr;
+
+VoidPtr API_ROUTINE gds__alloc_debug(signed long, const TEXT*, unsigned long);
+void  API_ROUTINE gds_alloc_flag_unfreed(void*);
+void  API_ROUTINE gds_alloc_report(unsigned long, const char*, int);
+
+VoidPtr API_ROUTINE gds__alloc(signed long);
+
+#ifdef DEBUG_GDS_ALLOC
+#define gds__alloc(s)   gds__alloc_debug ((s), __FILE__, __LINE__)
+#endif /* DEBUG_GDS_ALLOC */
+
+
+ISC_STATUS  API_ROUTINE gds__decode(ISC_STATUS, unsigned short*, unsigned short*);
+void  API_ROUTINE isc_decode_date(const ISC_QUAD*, void*);
+void  API_ROUTINE isc_decode_sql_date(const GDS_DATE*, void*);
+void  API_ROUTINE isc_decode_sql_time(const GDS_TIME*, void*);
+void  API_ROUTINE isc_decode_timestamp(const GDS_TIMESTAMP*, void*);
+ISC_STATUS  API_ROUTINE gds__encode(ISC_STATUS, unsigned short);
+void  API_ROUTINE isc_encode_date(const void*, ISC_QUAD*);
+void  API_ROUTINE isc_encode_sql_date(const void*, GDS_DATE*);
+void  API_ROUTINE isc_encode_sql_time(const void*, GDS_TIME*);
+void  API_ROUTINE isc_encode_timestamp(const void*, GDS_TIMESTAMP*);
+unsigned long API_ROUTINE gds__free(void*);
+
+/* CVC: This function was created to be used inside the engine, but I don't see
+a problem if it's used from outside, too.
+This function has been renamed and made public. */
+signed long API_ROUTINE fb_interpret(char*, unsigned int, const ISC_STATUS**);
+/* CVC: This non-const signature is needed for compatibility, see gds.cpp. */
+signed long API_ROUTINE gds__interprete(char*, ISC_STATUS**);
+void  API_ROUTINE gds__interprete_a(signed char*, signed short*, ISC_STATUS*, signed short*);
+
+void  API_ROUTINE gds__log(const TEXT*, ...);
+void  API_ROUTINE gds__trace(const char*);
+void  API_ROUTINE gds__trace_raw(const char*, unsigned int = 0);
+void  API_ROUTINE gds__log_status(const TEXT*, const ISC_STATUS*);
+int   API_ROUTINE gds__msg_close(void*);
+signed short  API_ROUTINE gds__msg_format(void*  handle,
+                  unsigned short facility,
+                  unsigned short msgNumber,
+                  unsigned short bufsize,
+                  TEXT*  buffer,
+                  const TEXT* arg1,
+                  const TEXT* arg2,
+                  const TEXT* arg3,
+                  const TEXT* arg4,
+                  const TEXT* arg5);
+signed short  API_ROUTINE gds__msg_lookup(void*, unsigned short, unsigned short, unsigned short,
+                    TEXT*, unsigned short*);
+int   API_ROUTINE gds__msg_open(void**, const TEXT*);
+void  API_ROUTINE gds__msg_put(void*, unsigned short, unsigned short, const TEXT*,
+              const TEXT*, const TEXT*, const TEXT*, const TEXT*);
+void  API_ROUTINE gds__prefix(TEXT*, const TEXT*);
+void  API_ROUTINE gds__prefix_lock(TEXT*, const TEXT*);
+void  API_ROUTINE gds__prefix_msg(TEXT*, const TEXT*);
+
+signed long API_ROUTINE gds__get_prefix(signed short, const TEXT*);
+ISC_STATUS  API_ROUTINE gds__print_status(const ISC_STATUS*);
+unsigned short  API_ROUTINE gds__parse_bpb(unsigned short, const unsigned char*, unsigned short*, unsigned short*);
+unsigned short  API_ROUTINE gds__parse_bpb2(unsigned short, const unsigned char*, signed short*, signed short*,
+  unsigned short*, unsigned short*, bool*, bool*, bool*, bool*);
+signed long API_ROUTINE gds__ftof(const signed char*, const unsigned short length1, signed char*, const unsigned short length2);
+int   API_ROUTINE fb_print_blr(const unsigned char*, unsigned long, FPTR_PRINT_CALLBACK, void*, signed short);
+int   API_ROUTINE gds__print_blr(const unsigned char*, FPTR_PRINT_CALLBACK, void*, signed short);
+void  API_ROUTINE gds__put_error(const TEXT*);
+void  API_ROUTINE gds__qtoq(const void*, void*);
+void  API_ROUTINE gds__register_cleanup(FPTR_VOID_PTR, void*);
+signed long API_ROUTINE gds__sqlcode(const ISC_STATUS*);
+void  API_ROUTINE gds__sqlcode_s(const ISC_STATUS*, unsigned long*);
+VoidPtr API_ROUTINE gds__temp_file(BOOLEAN, const TEXT*, TEXT*, TEXT* = NULL, BOOLEAN = FALSE);
+void  API_ROUTINE gds__unregister_cleanup(FPTR_VOID_PTR, void*);
+BOOLEAN API_ROUTINE gds__validate_lib_path(const TEXT*, const TEXT*, TEXT*, signed long);
+signed long API_ROUTINE gds__vax_integer(const unsigned char*, signed short);
+void  API_ROUTINE gds__vtof(const signed char*, signed char*, unsigned short);
+void  API_ROUTINE gds__vtov(const signed char*, char*, signed short);
+void  API_ROUTINE isc_print_sqlerror(signed short, const ISC_STATUS*);
+void  API_ROUTINE isc_sql_interprete(signed short, TEXT*, signed short);
+SINT64  API_ROUTINE isc_portable_integer(const unsigned char*, signed short);
+
+// 14-June-2004. Nickolay Samofatov. The routines below are not part of the
+// API and are not exported. Maybe use another prefix like GDS_ for them?
+void  gds__cleanup();
+void  gds__ulstr(char* buffer, FB_UINT64 value, const int minlen, const char filler);
+
+void  FB_EXPORTED gds__default_printer(void*, signed short, const TEXT*);
+void  FB_EXPORTED gds__trace_printer(void*, signed short, const TEXT*);
+#ifdef NOT_USED_OR_REPLACED
+void  gds__print_pool(Firebird::MemoryPool*, const TEXT*, ...);
+#endif
+void  GDS_init_prefix();
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
+
+#endif /* JRD_GDS_PROTO_H */
+
+
+//------------------------------------------------
+
+
+//----------------gdsassert.h---------------------
+#ifndef COMMON_GDSASSERT_H
+#define COMMON_GDSASSERT_H
+
+#ifdef DEV_BUILD
+
+
+inline void fb_assert_impl(const char* msg, const char* file, int line, bool do_abort)
+{
+  const char* const ASSERT_FAILURE_STRING = "Assertion (%s) failure: %s %" LINEFORMAT"\n";
+
+  if (isatty(2))
+    fprintf(stderr, ASSERT_FAILURE_STRING, msg, file, line);
+  else
+    gds__log(ASSERT_FAILURE_STRING, msg, file, line);
+
+  if (do_abort)
+    abort();
+}
+
+#if !defined(fb_assert)
+
+#define fb_assert(ex) \
+  ((void) ( !(ex) && (fb_assert_impl(#ex, __FILE__, __LINE__, true), 1) ))
+
+#define fb_assert_continue(ex) \
+  ((void) ( !(ex) && (fb_assert_impl(#ex, __FILE__, __LINE__, false), 1) ))
+
+#endif  // fb_assert
+
+#else // DEV_BUILD
+
+#define fb_assert(ex) \
+  ((void) 0)
+
+#define fb_assert_continue(ex) \
+  ((void) 0)
+
+#endif  // DEV_BUILD
+
+namespace DtorException {
+  inline void devHalt()
+  {
+    // If any guard's dtor is executed during exception processing,
+    // (remember - this guards live on the stack), exception
+    // in leave() causes std::terminate() to be called, therefore
+    // losing original exception information. Not good for us.
+    // Therefore ignore in release and abort in debug.
+#ifdef DEV_BUILD
+    abort();
+#endif
+  }
+}
+
+//------------------------------------------------
+
+
+//------------------------------------------------------------------------------
+#ifndef VECTOR_H
+#define VECTOR_H
+
+namespace Firebird {
+
+// Very fast static array of simple types
+template <typename T, FB_SIZE_T Capacity, typename A = char>
+class Vector
+{
+public:
+  Vector() : count(0) {}
+
+  T& operator[](FB_SIZE_T index) throw()
+  {
+      fb_assert(index < count);
+      return data[index];
+  }
+
+  const T& operator[](FB_SIZE_T index) const throw()
+  {
+      fb_assert(index < count);
+      return data[index];
+  }
+
+  T* begin() throw() { return data; }
+  T* end() throw() { return data + count; }
+  const T* begin() const throw() { return data; }
+  const T* end() const throw() { return data + count; }
+  bool hasData() const throw() { return (count != 0); }
+  FB_SIZE_T getCount() const throw() { return count; }
+  FB_SIZE_T getCapacity() const throw() { return Capacity; }
+  void clear() throw() { count = 0; }
+
+  void insert(FB_SIZE_T index, const T& item)
+  {
+    fb_assert(index <= count);
+    fb_assert(count < Capacity);
+    memmove(data + index + 1, data + index, sizeof(T) * (count++ - index));
+    data[index] = item;
+  }
+
+  FB_SIZE_T add(const T& item)
+  {
+    fb_assert(count < Capacity);
+    data[count] = item;
+      return ++count;
+  }
+
+  T* remove(FB_SIZE_T index) throw()
+  {
+      fb_assert(index < count);
+      memmove(data + index, data + index + 1, sizeof(T) * (--count - index));
+    return &data[index];
+  }
+
+  T* removeCount(const FB_SIZE_T index, const FB_SIZE_T n) throw()
+  {
+      fb_assert(index + n <= count);
+      memmove(data + index, data + index + n, sizeof(T) * (count - index - n));
+    count -= n;
+    return &data[index];
+  }
+
+  void shrink(FB_SIZE_T newCount) throw()
+  {
+    fb_assert(newCount <= count);
+    count = newCount;
+  }
+
+  void join(const Vector<T, Capacity>& L) throw()
+  {
+    fb_assert(count + L.count <= Capacity);
+    memcpy(data + count, L.data, sizeof(T) * L.count);
+    count += L.count;
+  }
+
+  // prepare vector to be used as a buffer of capacity items
+  T* getBuffer(FB_SIZE_T capacityL) throw()
+  {
+    fb_assert(capacityL <= Capacity);
+    count = capacityL;
+    return data;
+  }
+
+  void push(const T& item)
+  {
+    add(item);
+  }
+
+  T pop()
+  {
+    fb_assert(count > 0);
+    count--;
+    return data[count];
+  }
+
+  void push(const T* items, const FB_SIZE_T itemsCount)
+  {
+    fb_assert(count <= FB_MAX_SIZEOF - itemsCount);
+    fb_assert(count + itemsCount <= Capacity);
+    memcpy(data + count, items, sizeof(T) * itemsCount);
+    count += itemsCount;
+  }
+
+  void append(const T* items, const FB_SIZE_T itemsCount)
+  {
+    push(items, itemsCount);
+  }
+
+
+  // This method only assigns "pos" if the element is found.
+  // Maybe we should modify it to iterate directy with "pos".
+  bool find(const T& item, FB_SIZE_T& pos) const
+  {
+    for (FB_SIZE_T i = 0; i < count; i++)
+    {
+      if (data[i] == item)
+      {
+        pos = i;
+        return true;
+      }
+    }
+    return false;
+  }
+
+protected:
+  union
+  {
+    FB_SIZE_T count;
+    A align;
+  };
+  // Do not insert data members between align and data:
+  // alignment of data is ensured by preceding union
+  T data[Capacity];
+};
+
+// Template for default value comparsion
+template <typename T>
+class DefaultComparator
+{
+public:
+  static bool greaterThan(const T& i1, const T& i2)
+  {
+      return i1 > i2;
+  }
+};
+
+// Template to convert value to index directly
+template <typename T>
+class DefaultKeyValue
+{
+public:
+  static const T& generate(const void* /*sender*/, const T& item) { return item; }
+  static const T& generate(const T& item) { return item; }
+};
+
+// Fast sorted array of simple objects
+// It is used for B+ tree nodes lower, but can still be used by itself
+template <typename Value, FB_SIZE_T Capacity, typename Key = Value,
+  typename KeyOfValue = DefaultKeyValue<Value>,
+  typename Cmp = DefaultComparator<Key> >
+class SortedVector : public Vector<Value, Capacity>
+{
+public:
+  SortedVector() : Vector<Value, Capacity>() {}
+  bool find(const Key& item, FB_SIZE_T& pos) const
+  {
+    FB_SIZE_T highBound = this->count, lowBound = 0;
+    while (highBound > lowBound)
+    {
+      const FB_SIZE_T temp = (highBound + lowBound) >> 1;
+      if (Cmp::greaterThan(item, KeyOfValue::generate(this, this->data[temp])))
+        lowBound = temp + 1;
+      else
+        highBound = temp;
+    }
+    pos = lowBound;
+    return highBound != this->count &&
+      !Cmp::greaterThan(KeyOfValue::generate(this, this->data[lowBound]), item);
+  }
+  FB_SIZE_T add(const Value& item)
+  {
+      FB_SIZE_T pos;
+        find(KeyOfValue::generate(this, item), pos);
+    this->insert(pos, item);
+    return pos;
+  }
+};
+
+
+// Templates to allow to iterate thru array\vector of values and process items
+// in some way. Processed items are marked and skipped at next iteration circle.
+// Idea is to not remove processed items from array and avoid costly memory
+// moving. Also, iterator is able to move upper and lower bounds of array if
+// last (or first) items are marked, making next iterations more efficient.
+
+template <typename T>
+class DefaultMarkValue
+{
+public:
+  static T getMarkValue()
+  {
+    return T(0);
+  }
+};
+
+template <typename T, typename MarkValue = DefaultMarkValue<T> >
+class DefaultMarker
+{
+public:
+  static void mark(T* const item)
+  {
+    *item = MarkValue::getMarkValue();
+  }
+
+  static bool isMarked(const T* const item)
+  {
+    return *item == MarkValue::getMarkValue();
+  }
+};
+
+template <typename T, typename Marker = DefaultMarker<T> >
+class MarkIterator
+{
+public:
+  MarkIterator(T* begin, FB_SIZE_T count) :
+    m_begin(begin),
+    m_end(begin + count),
+    m_curr(begin),
+    m_last(begin)
+  {
+  }
+
+  // Mark current item as processed
+  void mark()
+  {
+    Marker::mark(m_curr);
+
+    if (m_last == m_curr)
+      m_last--;
+  }
+
+  // Move iterator position to the first not processed item
+  void rewind()
+  {
+    m_curr = m_begin;
+    m_end = m_last + 1;
+    m_last = m_begin;
+  }
+
+  T& operator*() const
+  {
+    fb_assert(m_begin <= m_curr);
+    fb_assert(m_curr < m_end);
+    return *m_curr;
+  }
+
+  // Advance iterator to the next not processed item, if exist
+  void operator++()
+  {
+    fb_assert(m_begin <= m_curr);
+    fb_assert(m_curr < m_end);
+
+    const bool at_begin = (m_begin == m_curr);
+    m_curr++;
+
+    while (m_curr < m_end && Marker::isMarked(m_curr))
+      m_curr++;
+
+    if (m_curr == m_end)
+      return;
+
+    if (at_begin)
+    {
+      if (Marker::isMarked(m_begin))
+        m_begin = m_curr;
+      else if (m_begin != m_curr - 1)
+      {
+        m_curr[-1] = *m_begin;
+        m_begin = m_curr - 1;
+      }
+    }
+
+    if (!Marker::isMarked(m_curr))
+      m_last = m_curr;
+  }
+
+  // Show if current position is valid
+  bool isEof() const
+  {
+    return m_curr >= m_end;
+  }
+
+  // Show if not processed items still exists
+  bool isEmpty() const
+  {
+    return m_begin >= m_end;
+  }
+
+private:
+  T* m_begin;
+  T* m_end;
+  T* m_curr;
+  T* m_last;
+};
+
+} // namespace Firebird
+
+#endif
+
+//------------------------------------------------------------------------------
+
+
+template <typename T>
+//---------------------FB_ALIGN-------------------//
+inline T FB_ALIGN(T n, uintptr_t b)
+{
+  return (T) ((((uintptr_t) n) + b - 1) & ~(b - 1));
+}
+//------------------------------------------------
+
+
+
+//--------------------MEM_ALIGN-------------------//
+static inline size_t MEM_ALIGN(size_t value)
+{
+  return FB_ALIGN(value, ALLOC_ALIGNMENT);
+}
+//------------------------------------------------
+
+
+
+//----------------------AtomicCounter---------------------//
+class AtomicCounter
+{
+public:
+  typedef IPTR counter_type;
+
+  explicit AtomicCounter(counter_type value = 0)
+    : counter(value)
+  {
+    static_assert(sizeof(counter_type) == sizeof(counter), "Internal and external counter sizes need to match");
+  }
+
+  ~AtomicCounter()
+  {
+  }
+
+  counter_type value() const { return counter.load(std::memory_order_acquire); }
+
+  counter_type exchangeAdd(counter_type value)
+  {
+    return counter.fetch_add(value);
+  }
+
+  void setValue(counter_type val)
+  {
+    counter.store(val, std::memory_order_release);
+  }
+
+  bool compareExchange(counter_type oldVal, counter_type newVal)
+  {
+    return counter.compare_exchange_strong(oldVal, newVal);
+  }
+
+  // returns old value
+  counter_type exchangeBitAnd(counter_type val)
+  {
+    while (true)
+    {
+       counter_type oldVal = counter.load();
+       if (counter.compare_exchange_strong(oldVal, oldVal & val))
+         return oldVal;
+    }
+  }
+
+  // returns old value
+  counter_type exchangeBitOr(counter_type val)
+  {
+    while (true)
+    {
+      counter_type oldVal = counter.load();
+      if (counter.compare_exchange_strong(oldVal, oldVal | val))
+        return oldVal;
+    }
+  }
+
+  // returns old value
+  counter_type exchangeGreater(counter_type val)
+  {
+    while (true)
+     {
+       counter_type oldVal = counter.load(std::memory_order_acquire);
+
+       if (oldVal >= val)
+         return oldVal;
+
+       if (counter.compare_exchange_strong(oldVal, val))
+         return oldVal;
+     }
+  }
+
+  // returns old value
+  counter_type exchangeLower(counter_type val)
+  {
+    while (true)
+    {
+      counter_type oldVal = counter.load(std::memory_order_acquire);
+
+      if (oldVal <= val)
+        return oldVal;
+
+      if (counter.compare_exchange_strong(oldVal, val))
+        return oldVal;
+    }
+  }
+
+  void operator &=(counter_type val)
+  {
+    counter &= val;
+  }
+
+  void operator |=(counter_type val)
+  {
+    counter |= val;
+  }
+
+
+  // returns new value !
+  counter_type operator ++()
+  {
+    return counter++ + 1;
+  }
+
+  // returns new value !
+  counter_type operator --()
+  {
+    return counter-- - 1;
+  }
+
+  inline operator counter_type () const
+  {
+    return value();
+  }
+
+  inline void operator =(counter_type val)
+  {
+    setValue(val);
+  }
+
+  inline counter_type operator +=(counter_type val)
+  {
+    return exchangeAdd(val) + val;
+  }
+
+  inline counter_type operator -=(counter_type val)
+  {
+    return exchangeAdd(-val) - val;
+  }
+
+ private:
+   std::atomic<counter_type> counter;
+ };
+//-----------------------------------------------------------------
+
+//---------------------------MemoryStats-------------------------//
+class MemoryStats
+{
+public:
+  explicit MemoryStats(MemoryStats* parent = NULL)
+    : mst_parent(parent), mst_usage(0), mst_mapped(0), mst_max_usage(0), mst_max_mapped(0)
+  {}
+
+  ~MemoryStats()
+  {}
+
+  size_t getCurrentUsage() const FB_NOTHROW { return mst_usage.value(); }
+  size_t getMaximumUsage() const FB_NOTHROW { return mst_max_usage; }
+  size_t getCurrentMapping() const FB_NOTHROW { return mst_mapped.value(); }
+  size_t getMaximumMapping() const FB_NOTHROW { return mst_max_mapped; }
+
+private:
+  // Forbid copying/assignment
+  MemoryStats(const MemoryStats&);
+  MemoryStats& operator=(const MemoryStats&);
+
+  MemoryStats* mst_parent;
+
+  // Amount of memory mapped (including all overheads)
+  // Useful for monitoring OS memory consumption
+  AtomicCounter mst_mapped;
+  //////////MemoryStats* mst_mapped; <----------------------------------------------------------????    ???
+  AtomicCounter mst_usage;
+
+  // We don't particularily care about extreme precision of these max values,
+  // this is why we don't synchronize them
+  size_t mst_max_usage;
+  size_t mst_max_mapped;
+
+  // These methods are thread-safe due to usage of atomic counters only
+  void increment_usage(size_t size) FB_NOTHROW
+  { 
+    for (MemoryStats* statistics = this; statistics; statistics = statistics->mst_parent)
+    { 
+      const size_t temp = statistics->mst_usage.exchangeAdd(size) + size;
+      if (temp > statistics->mst_max_usage)
+        statistics->mst_max_usage = temp;
+    }
+  }
+
+  void decrement_usage(size_t size) FB_NOTHROW
+  {
+    for (MemoryStats* statistics = this; statistics; statistics = statistics->mst_parent)
+    {
+      statistics->mst_usage -= size;
+    }
+  }
+
+  void increment_mapping(size_t size) FB_NOTHROW
+  {
+    for (MemoryStats* statistics = this; statistics; statistics = statistics->mst_parent)
+    {
+      const size_t temp = statistics->mst_mapped.exchangeAdd(size) + size;
+      if (temp > statistics->mst_max_mapped)
+        statistics->mst_max_mapped = temp;
+    }
+  }
+
+  void decrement_mapping(size_t size) FB_NOTHROW
+  {
+    for (MemoryStats* statistics = this; statistics; statistics = statistics->mst_parent)
+    {
+      statistics->mst_mapped -= size;
+    }
+  }
+
+  friend class MemPool;
+};
+//-----------------------------------------------------------------
+
+
+//--------------------MemPool Declaration-------------------
+class MemPool
+{
+private:
+  void initialize();
+
+public:
+  static MemPool* defaultMemPool;
+
+  MemPool();
+  MemPool(MemPool& parent, MemoryStats& stats);
+  virtual ~MemPool(void);
+
+private:
+  static const size_t minAllocation = 65536;
+  static const size_t roundingSize = ALLOC_ALIGNMENT;
+
+  FreeObjects<LinkedList, LowLimits> smallObjects;
+  Vector<MemBlock*, 16> parentRedirected;
+  FreeObjects<DoubleLinkedList, MediumLimits> mediumObjects;
+  MemBigHunk*   bigHunks;
+
+  Mutex     mutex;
+  int       blocksAllocated;
+  int       blocksActive;
+  bool      pool_destroying, parent_redirect;
+
+  // Statistics group for the pool
+  MemoryStats* stats;
+  // Parent pool if present
+  MemPool* parent;
+  // Memory used
+  AtomicCounter used_memory, mapped_memory;
+
+private:
+
+#ifdef VALIDATE_POOL
+  class Validator
+  {
+  public:
+    Validator(MemPool* p) :
+      m_pool(p)
+    {
+      validate();
+    }
+
+    ~Validator()
+    {
+      validate();
+    }
+
+  private:
+    MemPool* m_pool;
+
+    void validate()
+    {
+      if (m_pool)
+      {
+        char buf[256];
+        if (!m_pool->validate(buf, sizeof(buf)))
+        {
+          Syslog::Record(Syslog::Warning, buf);
+#ifdef MEM_DEBUG
+          m_pool->print_contents("validate.failed", 0, NULL);
+#endif
+        }
+      }
+    }
+  };
+#else
+  class Validator
+  {
+  public:
+    Validator(MemPool*) {}
+  };
+#endif // VALIDATE_POOL
+
+  MemBlock* alloc(size_t from, size_t& length, bool flagRedirect) FB_THROW (OOM_EXCEPTION);
+  void releaseBlock(MemBlock *block, bool flagDecr) FB_NOTHROW;
+
+public:
+  void* allocate(size_t size ALLOC_PARAMS) FB_THROW (OOM_EXCEPTION);
+  MemBlock* allocate2(size_t from, size_t& size ALLOC_PARAMS) FB_THROW (OOM_EXCEPTION);
+
+private:
+  virtual void memoryIsExhausted(void) FB_THROW (OOM_EXCEPTION);
+  void* allocRaw(size_t length) FB_THROW (OOM_EXCEPTION);
+  static void releaseMemory(void* block, bool flagExtent) FB_NOTHROW;
+  static void releaseRaw(bool destroying, void *block, size_t size, bool use_cache = true) FB_NOTHR          OW;
+  void* getExtent(size_t from, size_t& to) FB_THROW (OOM_EXCEPTION);
+
+public:
+  static void releaseExtent(bool destroying, void *block, size_t size, MemPool* pool) FB_NOTHROW;
+
+  // pass desired size, return actual extent size
+  template <class Extent>
+  void newExtent(size_t& size, Extent** linkedList) FB_THROW (OOM_EXCEPTION);
+
+private:
+#ifdef USE_VALGRIND
+  // Circular FIFO buffer of read/write protected blocks pending free operation
+  MemBlock* delayedFree[DELAYED_FREE_COUNT];
+  size_t delayedFreeCount;
+  size_t delayedFreePos;
+#endif
+
+public:
+  static void deletePool(MemPool* pool);
+  static void globalFree(void* block) FB_NOTHROW;
+
+  static void deallocate(void* block) FB_NOTHROW;
+  bool validate(char* buf, FB_SIZE_T size);
+
+  // Create memory pool instance
+  static MemPool* createPool(MemPool* parent, MemoryStats& stats);
+
+  // Set statistics group for pool. Usage counters will be decremented from
+  // previously set group and added to new
+  void setStatsGroup(MemoryStats& stats) FB_NOTHROW;
+
+  // Initialize and finalize global memory pool
+  static MemPool* init()
+  {
+    fb_assert(!defaultMemPool);
+
+    static char mpBuffer[sizeof(MemPool) + ALLOC_ALIGNMENT];
+    defaultMemPool = new((void*)(IPTR) MEM_ALIGN((size_t)(IPTR) mpBuffer)) MemPool();
+    return defaultMemPool;
+  }
+
+  static void cleanup()
+  {
+    defaultMemPool->~MemPool();
+    defaultMemPool = NULL;
+
+    while (extents_cache.getCount())
+      releaseRaw(true, extents_cache.pop(), DEFAULT_ALLOCATION, false);
+
+#ifndef WIN_NT
+    unsigned oldCount = 0;
+
+    for (;;)
+    {
+      unsigned newCount = 0;
+      FailedBlock* oldList = failedList;
+
+      if (oldList)
+      {
+        fb_assert(oldList->prev);
+        oldList->prev = &oldList;
+        failedList = NULL;
+      }
+
+      while (oldList)
+      {
+        ++newCount;
+        FailedBlock* fb = oldList;
+        SemiDoubleLink::pop(oldList);
+        releaseRaw(true, fb, fb->blockSize, false);
+      }
+
+      if (newCount == oldCount)
+        break;
+
+      oldCount = newCount;
+    }
+#endif // WIN_NT
+
+  }
+
+  // Statistics
+  void increment_usage(size_t size) FB_NOTHROW
+  {
+    stats->increment_usage(size);
+    used_memory += size;
+  }
+
+  void decrement_usage(size_t size) FB_NOTHROW
+  {
+    stats->decrement_usage(size);
+    used_memory -= size;
+  }
+
+  void increment_mapping(size_t size) FB_NOTHROW
+  {
+    stats->increment_mapping(size);
+    mapped_memory += size;
+  }
+
+  void decrement_mapping(size_t size) FB_NOTHROW
+  {
+    stats->decrement_mapping(size);
+    mapped_memory -= size;
+  }
+
+#ifdef MEM_DEBUG
+  // Print out pool contents. This is debugging routine
+  void print_contents(FILE*, unsigned flags, const char* filter_path) FB_NOTHROW;
+  // The same routine, but more easily callable from the debugger
+  void print_contents(const char* filename, unsigned flags, const char* filter_path) FB_NOTHROW;
+
+private:
+  MemPool* next;
+  MemPool* child;
+#endif
+};
+//-------------------------------------------------------------------------;
+
+
+//--------------------------MemoryPool class-------------------------//
+class MemoryPool
+{
+private:
+  MemPool* pool;
+
+  MemoryPool(MemPool* p)
+    : pool(p)
+  { }
+
+  // Default statistics group for process
+  static MemoryStats* default_stats_group;
+
+public:
+  // This is maximum block size which is cached (not allocated directly from OS)
+  enum RecommendedBufferSize { MAX_MEDIUM_BLOCK_SIZE = 64384 }; // MediumLimits::TOP_LIMIT - 128
+
+  static MemoryPool* defaultMemoryManager;
+
+public:
+  // Create memory pool instance
+  static MemoryPool* createPool(MemoryPool* parent = NULL, MemoryStats& stats = *default_stats_group);
+  // Delete memory pool instance
+  static void deletePool(MemoryPool* pool);
+
+#ifdef DEBUG_GDS_ALLOC
+#define ALLOC_ARGS , __FILE__, __LINE__
+#define ALLOC_PARAMS , const char* file, int line
+#define ALLOC_PASS_ARGS , file, line
+#else
+#define ALLOC_ARGS
+#define ALLOC_PARAMS
+#define ALLOC_PASS_ARGS
+#endif // DEBUG_GDS_ALLOC
+
+  void* calloc(size_t size ALLOC_PARAMS) FB_THROW (OOM_EXCEPTION);
+
+#ifdef LIBC_CALLS_NEW
+  static void* globalAlloc(size_t s ALLOC_PARAMS) FB_THROW (OOM_EXCEPTION);
+#else
+  static void* globalAlloc(size_t s ALLOC_PARAMS) FB_THROW (OOM_EXCEPTION)
+  {
+    return defaultMemoryManager->allocate(s ALLOC_PASS_ARGS);
+  }
+#endif // LIBC_CALLS_NEW
+
+  void* allocate(size_t size ALLOC_PARAMS) FB_THROW (OOM_EXCEPTION);
+
+  static void globalFree(void* mem) FB_NOTHROW;
+  void deallocate(void* mem) FB_NOTHROW;
+
+  // Set context pool for current thread of execution
+  static MemoryPool* setContextPool(MemoryPool* newPool);
+
+  // Get context pool for current thread of execution
+  static MemoryPool* getContextPool();
+
+  // Set statistics group for pool. Usage counters will be decremented from
+  // previously set group and added to new
+  void setStatsGroup(MemoryStats& stats) FB_NOTHROW;
+
+  // Initialize and finalize global memory pool
+  static void init();
+  static void cleanup();
+
+  // Initialize context pool
+  static void contextPoolInit();
+
+  // Print out pool contents. This is debugging routine
+  static const unsigned PRINT_USED_ONLY = 0x01;
+  static const unsigned PRINT_RECURSIVE = 0x02;
+  void print_contents(FILE*, unsigned flags = 0, const char* filter_path = 0) FB_NOTHROW;
+  // The same routine, but more easily callable from the debugger
+  void print_contents(const char* filename, unsigned flags = 0, const char* filter_path = 0) FB_NOTHROW;
+
+  friend class MemPool;
+};
+
+//------------------------------------------------------------
+
+
+
+//------------------PoolHolder------------------------------
+class ContextPoolHolder
+{
+public:
+  explicit ContextPoolHolder(MemoryPool* newPool)
+  {
+    savedPool = MemoryPool::setContextPool(newPool);
+  }
+  ~ContextPoolHolder()
+  {
+    MemoryPool::setContextPool(savedPool);
+  }
+private:
+  MemoryPool* savedPool;
+};
+//---------------------------------------------------------//
+
+
+//------------------Some definitions && declarations--------------------
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
+#define  ISC_EXPORT __stdcall
+#define  ISC_EXPORT_VARARG  __cdecl
+#else
+#define  ISC_EXPORT
+#define  ISC_EXPORT_VARARG
+#endif
+
+#define FB_SUCCESS	0
+#define	FB_FAILURE	1
+
+#define isc_dpb_version1			1
+#define isc_dpb_user_name			28
+#define isc_dpb_password			29
+#define isc_dpb_lc_messages		47
+#define isc_dpb_lc_ctype			48
+#define	isc_dpb_reserved			53
+#define isc_dpb_sql_role_name	60
+
+#if defined(_LP64) || defined(__LP64__) || defined(__arch64__) || defined(_WIN64)
+typedef unsigned int  FB_API_HANDLE;
+#else
+typedef void*   FB_API_HANDLE;
+#endif
+
+#if defined(_LP64) || defined(__LP64__) || defined(__arch64__)
+typedef int       ISC_LONG;
+typedef unsigned int  ISC_unsigned long;
+#else
+typedef signed long   ISC_LONG;
+typedef unsigned long ISC_unsigned long;
+#endif
+
+
+typedef FB_API_HANDLE isc_db_handle;
+typedef char ISC_signed char;
+typedef intptr_t ISC_STATUS;
+
+#define ISC_STATUS_LENGTH 20
+#define MAX_unsigned char 0xFF		
+
+//---------------------------------------------------------------
+
+//----------------------------Memory::allocate declaration-------
+void* MemoryPool::allocate(size_t size ALLOC_PARAMS) FB_THROW (OOM_EXCEPTION)
+{
+  return pool->allocate(size ALLOC_PASS_ARGS);
+}
+//---------------------------------------------------------------
+
+MemoryPool*   MemoryPool::defaultMemoryManager = NULL;
+
+//-------------------------getDefaultMemoryPool------------------
+static inline MemoryPool* getDefaultMemoryPool() FB_NOTHROW
+{
+  fb_assert(MemoryPool::defaultMemoryManager);
+  return MemoryPool::defaultMemoryManager;
+}
+//---------------------------------------------------------------
+
+
+//---------------------------gds__alloc--------------------------
+
+//unsigned char API_ROUTINE gds__alloc(signed long size_request)
+VoidPtr API_ROUTINE gds__alloc(signed long size_request)
+{   
+    return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
+}
+//---------------------------------------------------------------
+
+
+
+//--------------------FreeObjects class--------------------
+template <class ListBuilder, class Limits>
+class FreeObjects
+{
+private:
+  typedef MemBlock* FreeObjPtr;
+  typedef typename ListBuilder::Hunk Extent;
+
+public:
+  FreeObjects()
+    : currentExtent(NULL)
+  { 
+    memset(freeObjects, 0, sizeof(freeObjects));
+  }
+
+  ~FreeObjects();
+
+  FreeObjPtr allocateBlock(MemPool* pool, size_t from, size_t& size) FB_THROW (OOM_EXCEPTION)
+  {
+    size_t full_size = size + (from ? 0 : ListBuilder::MEM_OVERHEAD);
+    if (full_size > Limits::TOP_LIMIT)
+      return NULL;
+
+    unsigned slot = Limits::getSlot(full_size, SLOT_ALLOC);
+    full_size = Limits::getSize(slot);
+
+    FreeObjPtr blk = ListBuilder::getElement(&freeObjects[slot]);
+    if (!blk && from)
+    {
+      for (unsigned slot1 = slot - 1; Limits::getSize(slot1) >= from; --slot1)
+      {
+        blk = ListBuilder::getElement(&freeObjects[slot1]);
+        if (blk)
+        { 
+          full_size = Limits::getSize(slot1);
+          break;
+        }
+
+        // This should not happen but try to be as safe as possible
+        fb_assert(slot1 > 0);
+        if (!slot1)
+          break;
+      }
+    }
+
+    if (!blk)
+      blk = newBlock(pool, slot);
+
+    size = full_size - ListBuilder::MEM_OVERHEAD;
+    return blk;
+  }
+
+  bool deallocateBlock(FreeObjPtr blk)
+  {
+    size_t size = blk->getSize();
+
+    if (size > Limits::TOP_LIMIT)
+      return false;   // Not our block
+
+    unsigned slot = Limits::getSlot(size, SLOT_ALLOC);
+    listBuilder.putElement(&freeObjects[slot], blk);
+    return true;
+  }
+
+#ifdef MEM_DEBUG
+  void print_contents(FILE* file, MemPool* pool, bool used_only,
+            const char* filter_path, const size_t filter_len) FB_NOTHROW
+  {
+    if (currentExtent)
+      currentExtent->print_contents(file, pool, used_only, filter_path, filter_len);
+  }
+#endif
+
+  void validate(MemPool* pool, StatInt& vMap, StatInt& vUse)
+  {
+    for (unsigned int slot = 0; slot < Limits::TOTAL_ELEMENTS; ++slot)
+      ListBuilder::validate(freeObjects[slot], Limits::getSize(slot));
+
+    if (currentExtent)
+      currentExtent->validate(pool, currentExtent->hdrSize(), vMap, vUse);
+  }
+
+private:
+  FreeObjPtr freeObjects[Limits::TOTAL_ELEMENTS];
+  ListBuilder listBuilder;
+  Extent* currentExtent;
+
+  MemBlock* newBlock(MemPool* pool, unsigned slot) FB_THROW (OOM_EXCEPTION);
+};
+
+//---------------------------------------------------------
+
+//----------------------------gds__free--------------------
+unsigned long API_ROUTINE gds__free(void* blk)
+{
+  getDefaultMemoryPool()->deallocate(blk);
+  return 0;
+}
+
+
+//-----------------isc_free---------------------
+signed long API_ROUTINE isc_free(SCHAR *blk)
+{
+
+  return gds__free(blk);
+}
+
+
+
+int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned short type,ISC_signed char* str, short str_len)
+{
+/**************************************
+ *
+ *	i s c _ m o d i f y _ d p b
+ *
+ **************************************
+ * CVC: This is exactly the same logic as isc_expand_dpb, but for one param.
+ * However, the difference is that when presented with a dpb type it that's
+ * unknown, it returns FB_FAILURE immediately. In contrast, isc_expand_dpb
+ * doesn't complain and instead treats those as integers and tries to skip
+ * them, hoping to sync in the next iteration.
+ *
+ * Functional description
+ *	Extend a database parameter block dynamically
+ *	to include runtime info.  Generated
+ *	by gpre to provide host variable support for
+ *	READY statement	options.
+ *	This expects one arg at a time.
+ *      the length of the string is passed by the caller and hence
+ * 	is not expected to be null terminated.
+ * 	this call is a variation of isc_expand_dpb without a variable
+ * 	arg parameters.
+ * 	Instead, this function is called recursively
+ *	Alternatively, this can have a parameter list with all possible
+ *	parameters either nulled or with proper value and type.
+ *
+ *  	**** This can be modified to be so at a later date, making sure
+ *	**** all callers follow the same convention
+ *
+ *	Note: dpb_size is signed short only for compatibility
+ *	with other calls (isc_attach_database) that take a dpb length.
+ *
+ **************************************/
+
+	// calculate length of database parameter block, setting initial length to include version
+	short new_dpb_length;
+
+	if (!*dpb || !(new_dpb_length = *dpb_size))
+	{
+		new_dpb_length = 1;
+	}
+
+	switch (type)
+	{
+	case isc_dpb_user_name:
+	case isc_dpb_password:
+	case isc_dpb_sql_role_name:
+	case isc_dpb_lc_messages:
+	case isc_dpb_lc_ctype:
+	case isc_dpb_reserved:
+		new_dpb_length += 2 + str_len;
+		break;
+
+	default:
+		return FB_FAILURE;
+	}
+
+	// if items have been added, allocate space
+
+	unsigned char* new_dpb;
+	if (new_dpb_length > *dpb_size)
+	{
+		// Note: gds__free done by GPRE generated code
+
+		new_dpb = (unsigned char*) gds__alloc((signed long)(sizeof(unsigned char) * new_dpb_length));
+
+		// FREE: done by client process in GPRE generated code
+		if (!new_dpb)
+		{
+			// NOMEM: don't trash existing dpb
+			return FB_FAILURE;		// NOMEM: not really handled
+		}
+
+		memcpy(new_dpb, *dpb, *dpb_size);
+	}
+	else
+		new_dpb = reinterpret_cast<unsigned char*>(*dpb);
+
+	unsigned char* p = new_dpb + *dpb_size;
+
+	if (!*dpb_size)
+	{
+		*p++ = isc_dpb_version1;
+	}
+
+	// copy in the new runtime items
+
+	switch (type)
+	{
+	case isc_dpb_user_name:
+	case isc_dpb_password:
+	case isc_dpb_sql_role_name:
+	case isc_dpb_lc_messages:
+	case isc_dpb_lc_ctype:
+	case isc_dpb_reserved:
+		{
+			const unsigned char* q = reinterpret_cast<const unsigned char*>(str);
+			if (q)
+			{
+				short length = str_len;
+				fb_assert(type <= MAX_unsigned char);
+				*p++ = (unsigned char) type;
+				fb_assert(length <= MAX_unsigned char);
+				*p++ = (unsigned char) length;
+				while (length--)
+				{
+					*p++ = *q++;
+				}
+			}
+			break;
+		}
+
+	default:
+		return FB_FAILURE;
+	}
+		*dpb_size = p - new_dpb;
+	*dpb = (ISC_signed char*) new_dpb;
+
+	return FB_SUCCESS;
+}
+
+
+typedef ISC_STATUS ISC_STATUS_ARRAY[ISC_STATUS_LENGTH];
+//int ISC_EXPORT isc_modify_dpb(ISC_signed char**, short*, unsigned short, const ISC_signed char*, short);
+
+ISC_STATUS ISC_EXPORT isc_attach_database(ISC_STATUS*, short, const ISC_signed char*, isc_db_handle*, short, const ISC_signed char*);
+ISC_STATUS ISC_EXPORT isc_detach_database(ISC_STATUS *, isc_db_handle *);
+//ISC_LONG ISC_EXPORT isc_free(ISC_signed char *);
+
+
+//------------------------isc_attach_database--------------------
+
+ISC_STATUS API_ROUTINE isc_attach_database(ISC_STATUS* userStatus, SSHORT fileLength,
+  const TEXT* filename, FB_API_HANDLE* publicHandle, SSHORT dpbLength, const SCHAR* dpb)
+{
+  StatusVector status(userStatus);
+  CheckStatusWrapper statusWrapper(&status);
+
+  try
+  {
+    nullCheck(publicHandle, isc_bad_db_handle);
+
+    if (!filename)
+      status_exception::raise(Arg::Gds(isc_bad_db_format) << Arg::Str(""));
+
+    PathName pathName(filename, fileLength ? fileLength : fb_strlen(filename));
+
+    RefPtr<Dispatcher> dispatcher(FB_NEW Dispatcher);
+
+    dispatcher->setDbCryptCallback(&statusWrapper, TLS_GET(legacyCryptCallback));
+    if (status.getState() & Firebird::IStatus::STATE_ERRORS)
+      return status[1];
+
+    YAttachment* attachment = dispatcher->attachDatabase(&statusWrapper, pathName.c_str(),
+      dpbLength, reinterpret_cast<const UCHAR*>(dpb));
+    if (status.getState() & Firebird::IStatus::STATE_ERRORS)
+      return status[1];
+
+    *publicHandle = attachment->getHandle();
+  }
+  catch (const Exception& e)
+  {
+    e.stuffException(&statusWrapper);
+  }
+
+  return status[1];
+}
+
+
+//---------------------------------------------------------------
+
+
+//-----------------------------isc_detach_database---------------
+
+ISC_STATUS API_ROUTINE isc_detach_database(ISC_STATUS* userStatus, FB_API_HANDLE* handle)
+{
+  StatusVector status(userStatus);
+  CheckStatusWrapper statusWrapper(&status);
+
+  try
+  {
+    RefPtr<YAttachment> attachment(translateHandle(attachments, handle));
+    attachment->detach(&statusWrapper);
+
+    if (!(status.getState() & Firebird::IStatus::STATE_ERRORS))
+      *handle = 0;
+  }
+  catch (const Exception& e)
+  {
+    e.stuffException(&statusWrapper);
+  }
+
+  return status[1];
+}
+
+//---------------------------------------------------------------
+
+//---------------------------------------------------------------
+
+static int firebird_loop_read(nsock_pool nsp, Connection *con);
+    
+enum states { FB_INIT, FB_USER };
+
+
+static int
+firebird_loop_read(nsock_pool nsp, Connection *con)
+{
+  if ((con->inbuf == NULL) || !memsearch((const char *)con->inbuf->get_dataptr(), "Symmetric\n", con->inbuf->get_len())) {
+    nsock_read(nsp, con->niod, ncrack_read_handler, FB_TIMEOUT, con);
+    return -1;
+  }
+
+  return 0;
+}
+
+void
+ncrack_firebird(nsock_pool nsp, Connection *con)
+{
+  //nsock_iod nsi = con->niod;
+  char database[256];
+  char connection_string[1024];
+	int ret;
+  isc_db_handle db;
+  ISC_STATUS_ARRAY status;
+  char *dpb = NULL;
+  short dpb_length = 0;
+  Service *serv=0; 
+	
+	switch(con->state)
+  {
+    
+    case FB_INIT:
+    
+    	strncpy(database, DEFAULT_DB, sizeof(database));
+    	database[sizeof(database)-1] = 0;
+    
+    	if (con->outbuf) 
+      	delete con->outbuf;
+    	con->outbuf = new Buf();
+      
+      dpb_length=(short) (1+ strlen(con->user) + 2 + strlen(con->pass) +2);  
+      if ((dpb = (char *) malloc(dpb_length)) == NULL)  //no database data found
+      {
+        printf("Invalid database path");
+      }
+			*dpb = isc_dpb_version1;
+			dpb_length=1;
+      //isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, "%s" , strlen(con->user));
+      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, con->user , strlen(con->user));
+      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_password, con->pass, strlen(con->pass));
+ 			snprintf(connection_string, sizeof(connection_string), "%s:%s", serv->target->NameIP(), database);
+      //con->outbuf->snprintf(sizeof(serv->target->NameIP()) + sizeof(database), "%s:%s", serv->target->NameIP(), database);
+	 		//nsock_write(nsp, nsi, ncrack_write_handler, FB_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+      con->state = FB_USER;
+     
+      if(isc_attach_database(status, 0, connection_string, &db, dpb_length, dpb)) {
+        isc_free(dpb);
+				if ((ret = firebird_loop_read(nsp, con)) == 0)
+					break;
+			else {
+        isc_detach_database(status, &db);
+        isc_free(dpb);
+				con->auth_success = true;
+				}
+			}
+      return ncrack_module_end(nsp, con);
+   } 
+}
+
+//#endif
