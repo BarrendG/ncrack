@@ -789,6 +789,8 @@ call_module(nsock_pool nsp, Connection *con)
     ncrack_dicom(nsp, con);  
   else if (!strcmp(name, "wordpress") || !strcmp(name, "wp"))
     ncrack_wordpress(nsp, con);
+  else if (!strcmp(name, "firebird") || !strcmp(name, "fb"))
+    ncrack_firebird(nsp, con);
 #if HAVE_OPENSSL
   else if (!strcmp(name, "wordpress-tls") || !strcmp(name, "wp-tls"))
     ncrack_wordpress(nsp, con);
