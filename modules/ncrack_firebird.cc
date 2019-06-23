@@ -154,13 +154,25 @@ static int firebird_loop_read(nsock_pool nsp, Connection *con);
     
 enum states { FB_INIT, FB_USER };
 
+
 //---------------------------------------------------
-#define ISC_STATUS_LENGTH 20
+#define FB_SUCCESS 0
+#define FB_FAILURE 1
 #define isc_dpb_version1 2
+#define ISC_STATUS_LENGTH 20
 #define isc_dpb_user_name 28
 #define isc_dpb_password 29
 //#define GDS_EXPORT ISC_EXPORT
 #define ISC_EXPORT //Further digging
+#define isc_dpb_lc_messages	47
+#define isc_dpb_lc_ctype 48
+#define isc_dpb_reserved 53
+#define isc_dpb_sql_role_name	60
+
+#define MAX_UCHAR		((UCHAR)0xFF)
+#define MIN_UCHAR		0x00
+#define UCHAR unsigned char
+#define SCHAR signed char
 
 
 //typedef unsigned int	FB_API_HANDLE;
@@ -174,7 +186,7 @@ typedef char TEXT;
 signed long str_len;
 const ISC_STATUS isc_bad_db_format=335544324L;
 
-int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned short type,ISC_signed      char* str, short str_len)
+int ISC_EXPORT isc_modify_dpb(signed char** dpb, signed short* dpb_size, unsigned short type,const signed char* str, signed short str_len)
 {
 /**************************************
  *
@@ -275,10 +287,10 @@ int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned s
       if (q)
       {
         short length = str_len;
-        fb_assert(type <= MAX_unsigned char);
-        *p++ = (unsigned char) type;
-        fb_assert(length <= MAX_unsigned char);
-        *p++ = (unsigned char) length;
+        fb_assert(type <= MAX_UCHAR);
+        *p++ = (UCHAR) type;
+        fb_assert(length <= MAX_UCHAR);
+        *p++ = (UCHAR) length;
         while (length--)
         {
           *p++ = *q++;
@@ -291,7 +303,7 @@ int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned s
     return FB_FAILURE;
   }
     *dpb_size = p - new_dpb;
-  *dpb = (ISC_signed char*) new_dpb;
+  *dpb = (SCHAR*) new_dpb;
 
   return FB_SUCCESS;
 }
