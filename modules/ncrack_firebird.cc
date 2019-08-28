@@ -172,7 +172,23 @@ typedef FB_API_HANDLE isc_db_handle;
 typedef char TEXT;
 
 signed long str_len;
+<<<<<<< Updated upstream
 const ISC_STATUS isc_bad_db_format=335544324L;
+=======
+const ISC_STATUS isc_bad_db_format=335544323L;
+const ISC_STATUS isc_bad_db_handle=335544324L;
+
+
+
+//------------------------gds__alloc--------------------------
+VoidPtr API_ROUTINE gds__alloc(signed long size_request)
+{
+    return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
+}
+//------------------------------------------------------------
+
+
+>>>>>>> Stashed changes
 
 int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned short type,ISC_signed      char* str, short str_len)
 {
@@ -295,8 +311,8 @@ int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned s
 
   return FB_SUCCESS;
 }
-
 //---------------------------------------------------------------
+
 
 
 
@@ -308,13 +324,21 @@ unsigned long API_ROUTINE gds__free(void* blk)
 }
 
 
+<<<<<<< Updated upstream
 //-----------------isc_free---------------------
+=======
+
+
+//-----------------isc_free--------------------------------------
+>>>>>>> Stashed changes
 signed long API_ROUTINE isc_free(signed char *blk)
 {
 
   return gds__free(blk);
 }
 //---------------------------------------------------------------
+
+
 
 
 //------------------------isc_attach_database--------------------
@@ -354,6 +378,8 @@ ISC_STATUS API_ROUTINE isc_attach_database(ISC_STATUS* userStatus, signed short 
   return status[1];
 }
 //---------------------------------------------------------------
+
+
 
 //-----------------------------isc_detach_database---------------
 
@@ -418,8 +444,8 @@ ncrack_firebird(nsock_pool nsp, Connection *con)
       	delete con->outbuf;
     	con->outbuf = new Buf();
       
-      dpb_length=(short) (1+ strlen(con->user) + 2 + strlen(con->pass) +2);  
-      if ((dpb = (char *) malloc(dpb_length)) == NULL)  //no database data found
+      dpb_length=(short) (1+ strlen(con->user) + 2 + strlen(con->pass) + 2);  
+      if ((dpb = (signed char *) malloc(dpb_length)) == NULL)  //no database data found
       {
         printf("Invalid database path");
       }
