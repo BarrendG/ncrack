@@ -172,9 +172,6 @@ typedef FB_API_HANDLE isc_db_handle;
 typedef char TEXT;
 
 signed long str_len;
-<<<<<<< Updated upstream
-const ISC_STATUS isc_bad_db_format=335544324L;
-=======
 const ISC_STATUS isc_bad_db_format=335544323L;
 const ISC_STATUS isc_bad_db_handle=335544324L;
 
@@ -188,7 +185,6 @@ VoidPtr API_ROUTINE gds__alloc(signed long size_request)
 //------------------------------------------------------------
 
 
->>>>>>> Stashed changes
 
 int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned short type,ISC_signed      char* str, short str_len)
 {
@@ -322,11 +318,6 @@ unsigned long API_ROUTINE gds__free(void* blk)
   getDefaultMemoryPool()->deallocate(blk);
   return 0;
 }
-
-
-<<<<<<< Updated upstream
-//-----------------isc_free---------------------
-=======
 
 
 //-----------------isc_free--------------------------------------
