@@ -154,17 +154,33 @@ static int firebird_loop_read(nsock_pool nsp, Connection *con);
     
 enum states { FB_INIT, FB_USER };
 
+
 //---------------------------------------------------
-#define ISC_STATUS_LENGTH 20
+#define FB_SUCCESS 0
+#define FB_FAILURE 1
 #define isc_dpb_version1 2
+#define ISC_STATUS_LENGTH 20
 #define isc_dpb_user_name 28
 #define isc_dpb_password 29
 //#define GDS_EXPORT ISC_EXPORT
 #define ISC_EXPORT //Further digging
+#define isc_dpb_lc_messages	47
+#define isc_dpb_lc_ctype 48
+#define isc_dpb_reserved 53
+#define isc_dpb_sql_role_name	60
+#define MAX_UCHAR		((UCHAR)0xFF)
+#define MIN_UCHAR		0x00
+#define UCHAR unsigned char
+#define SCHAR signed char
+#define isc_dpb_lc_messages 47
+#define isc_dpb_lc_ctype 48
+#define isc_dpb_reserved 53
+#define isc_dpb_sql_role_name 60
 
 
 //typedef unsigned int	FB_API_HANDLE;
 typedef void*		FB_API_HANDLE;
+typedef void* VoidPtr;
 
 typedef intptr_t ISC_STATUS;
 typedef ISC_STATUS ISC_STATUS_ARRAY[ISC_STATUS_LENGTH];
@@ -176,17 +192,16 @@ const ISC_STATUS isc_bad_db_format=335544323L;
 const ISC_STATUS isc_bad_db_handle=335544324L;
 
 
-
 //------------------------gds__alloc--------------------------
 VoidPtr API_ROUTINE gds__alloc(signed long size_request)
 {
     return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
 }
-//------------------------------------------------------------
 
 
 
-int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned short type,ISC_signed      char* str, short str_len)
+
+int ISC_EXPORT isc_modify_dpb(signed char** dpb, signed short* dpb_size, unsigned short type,const signed char* str, signed short str_len)
 {
 /**************************************
  *
@@ -287,9 +302,9 @@ int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned s
       if (q)
       {
         short length = str_len;
-        fb_assert(type <= MAX_unsigned char);
+        fb_assert(type <= unsigned char);
         *p++ = (unsigned char) type;
-        fb_assert(length <= MAX_unsigned char);
+        fb_assert(length <= unsigned char);
         *p++ = (unsigned char) length;
         while (length--)
         {
@@ -302,8 +317,8 @@ int ISC_EXPORT isc_modify_dpb(ISC_signed char** dpb, short* dpb_size, unsigned s
   default:
     return FB_FAILURE;
   }
-    *dpb_size = p - new_dpb;
-  *dpb = (ISC_signed char*) new_dpb;
+  *dpb_size = p - new_dpb;
+  *dpb = (signed char*) new_dpb;
 
   return FB_SUCCESS;
 }
@@ -318,18 +333,15 @@ unsigned long API_ROUTINE gds__free(void* blk)
   getDefaultMemoryPool()->deallocate(blk);
   return 0;
 }
-
+//---------------------------------------------------------------
 
 //-----------------isc_free--------------------------------------
->>>>>>> Stashed changes
 signed long API_ROUTINE isc_free(signed char *blk)
 {
 
   return gds__free(blk);
 }
 //---------------------------------------------------------------
-
-
 
 
 //------------------------isc_attach_database--------------------
@@ -343,8 +355,8 @@ ISC_STATUS API_ROUTINE isc_attach_database(ISC_STATUS* userStatus, signed short 
   {
     nullCheck(publicHandle, isc_bad_db_handle);
 
-    if (!filename)
-      status_exception::raise(Arg::Gds(isc_bad_db_format) << Arg::Str(""));
+    //if (!filename)
+    //  status_exception::raise(Arg::Gds(isc_bad_db_format) << Arg::Str(""));
 
     PathName pathName(filename, fileLength ? fileLength : fb_strlen(filename));
 

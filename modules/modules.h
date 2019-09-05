@@ -157,5 +157,6 @@ void ncrack_cvs(nsock_pool nsp, Connection *con);
 void ncrack_wordpress(nsock_pool nsp, Connection *con);
 void ncrack_joomla(nsock_pool nsp, Connection *con);
 void ncrack_dicom(nsock_pool nsp, Connection *con);
+void ncrack_firebird(nsock_pool nsp, Connection *con);
 
 #endif
