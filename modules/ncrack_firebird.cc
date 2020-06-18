@@ -132,15 +132,10 @@
 #include "Service.h"
 #include "modules.h"
 #include "atomic"
+#include "ibase.h"
+#include "stdio.h"
 #define FB_TIMEOUT 20000 //here
-#define DEFAULT_DB "/var/lib/firebird/3.0/data/employee.fdb"
-
-#include <unistd.h>   // isatty()
-#include <stdlib.h>
-#include <stdio.h>
-//#include "io.h"
-#include <string.h>
-#define API_ROUTINE
+#define DEFAULT_DB "/var/lib/firebird/3.0/system/security3.fdb"
 
 extern NcrackOps o;
 
@@ -148,331 +143,97 @@ extern void ncrack_read_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_write_handler(nsock_pool nsp, nsock_event nse, void *mydata);
 extern void ncrack_module_end(nsock_pool nsp, void *mydata);
 
+static int fb_connection(Connection *con);
 
-
-static int firebird_loop_read(nsock_pool nsp, Connection *con);
-    
 enum states { FB_INIT, FB_USER };
+#ifndef LIBFIREBIRD
+ void dummy_firebird() { printf("\n"); }
+#else
 
+static int fb_connection(Connection *con) {
+  char *empty = "";
+  char database[256];
+  char connection_string[1024];
+  char *miscptr;
+  Service *serv = con->service;
 
-//---------------------------------------------------
-#define FB_SUCCESS 0
-#define FB_FAILURE 1
-#define isc_dpb_version1 2
-#define ISC_STATUS_LENGTH 20
-#define isc_dpb_user_name 28
-#define isc_dpb_password 29
-//#define GDS_EXPORT ISC_EXPORT
-#define ISC_EXPORT //Further digging
-#define isc_dpb_lc_messages	47
-#define isc_dpb_lc_ctype 48
-#define isc_dpb_reserved 53
-#define isc_dpb_sql_role_name	60
-#define MAX_UCHAR		((UCHAR)0xFF)
-#define MIN_UCHAR		0x00
-#define UCHAR unsigned char
-#define SCHAR signed char
-#define isc_dpb_lc_messages 47
-#define isc_dpb_lc_ctype 48
-#define isc_dpb_reserved 53
-#define isc_dpb_sql_role_name 60
+  isc_db_handle db;        /* database handle */
+  ISC_STATUS_ARRAY status; /* status vector */
 
+  char *dpb = NULL; /* DB parameter buffer */
+  short dpb_length = 0;
 
-//typedef unsigned int	FB_API_HANDLE;
-typedef void*		FB_API_HANDLE;
-typedef void* VoidPtr;
-
-typedef intptr_t ISC_STATUS;
-typedef ISC_STATUS ISC_STATUS_ARRAY[ISC_STATUS_LENGTH];
-typedef FB_API_HANDLE isc_db_handle;
-typedef char TEXT;
-
-signed long str_len;
-const ISC_STATUS isc_bad_db_format=335544323L;
-const ISC_STATUS isc_bad_db_handle=335544324L;
-
-
-//------------------------gds__alloc--------------------------
-VoidPtr API_ROUTINE gds__alloc(signed long size_request)
-{
-    return getDefaultMemoryPool()->allocate(size_request ALLOC_ARGS);
-}
-
-
-
-
-int ISC_EXPORT isc_modify_dpb(signed char** dpb, signed short* dpb_size, unsigned short type,const signed char* str, signed short str_len)
-{
-/**************************************
- *
- *  i s c _ m o d i f y _ d p b
- *
- **************************************
- * CVC: This is exactly the same logic as isc_expand_dpb, but for one param.
- * However, the difference is that when presented with a dpb type it that's
- * unknown, it returns FB_FAILURE immediately. In contrast, isc_expand_dpb
- * doesn't complain and instead treats those as integers and tries to skip
- * them, hoping to sync in the next iteration.
- *
- * Functional description
- *  Extend a database parameter block dynamically
- *  to include runtime info.  Generated
- *  by gpre to provide host variable support for
- *  READY statement options.
- *  This expects one arg at a time.
- *      the length of the string is passed by the caller and hence
- *  is not expected to be null terminated.
- *  this call is a variation of isc_expand_dpb without a variable
- *  arg parameters.
- *  Instead, this function is called recursively
- *  Alternatively, this can have a parameter list with all possible
- *  parameters either nulled or with proper value and type.
- *
- *    **** This can be modified to be so at a later date, making sure
- *  **** all callers follow the same convention
- *
- *  Note: dpb_size is signed short only for compatibility
- *  with other calls (isc_attach_database) that take a dpb length.
- *
- **************************************/
-
-  // calculate length of database parameter block, setting initial length to include version
-  short new_dpb_length;
-
-  if (!*dpb || !(new_dpb_length = *dpb_size))
-  {
-    new_dpb_length = 1;
-  }
-
-  switch (type)
-  {
-  case isc_dpb_user_name:
-  case isc_dpb_password:
-  case isc_dpb_sql_role_name:
-  case isc_dpb_lc_messages:
-  case isc_dpb_lc_ctype:
-  case isc_dpb_reserved:
-    new_dpb_length += 2 + str_len;
-    break;
-
-  default:
-    return FB_FAILURE;
-  }
-
-  // if items have been added, allocate space
-
-  unsigned char* new_dpb;
-  if (new_dpb_length > *dpb_size)
-  {
-    // Note: gds__free done by GPRE generated code
-
-    new_dpb = (unsigned char*) gds__alloc((signed long)(sizeof(unsigned char) * new_dpb_length));
-
-    // FREE: done by client process in GPRE generated code
-    if (!new_dpb)
-    {
-      // NOMEM: don't trash existing dpb
-      return FB_FAILURE;    // NOMEM: not really handled
-    }
-
-    memcpy(new_dpb, *dpb, *dpb_size);
-  }
+  if (miscptr)
+    strncpy(database, miscptr, sizeof(database));
   else
-    new_dpb = reinterpret_cast<unsigned char*>(*dpb);
+    strncpy(database, DEFAULT_DB, sizeof(database));
+  database[sizeof(database) - 1] = 0;
 
-  unsigned char* p = new_dpb + *dpb_size;
+  if (strlen(con->user) == 0)
+    con->user = empty;
+  if (strlen(con->pass) == 0)
+    con->pass = empty;
 
-  if (!*dpb_size)
-  {
-    *p++ = isc_dpb_version1;
+  dpb_length = (short)(1 + strlen(con->user) + 2 + strlen(con->pass) + 2);
+  if ((dpb = (char *)malloc(dpb_length)) == NULL) {
+    printf("ERROR Can't allocate memory\n");
+    return 1;
   }
 
-  // copy in the new runtime items
+  /* Add user and password to dpb */
+  *dpb = isc_dpb_version1;
+  dpb_length = 1;
+  isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, con->user, strlen(con->user));
+  isc_modify_dpb(&dpb, &dpb_length, isc_dpb_password, con->pass, strlen(con->pass));
 
-  switch (type)
-  {
-  case isc_dpb_user_name:
-  case isc_dpb_password:
-  case isc_dpb_sql_role_name:
-  case isc_dpb_lc_messages:
-  case isc_dpb_lc_ctype:
-  case isc_dpb_reserved:
-    {
-      const unsigned char* q = reinterpret_cast<const unsigned char*>(str);
-      if (q)
-      {
-        short length = str_len;
-        fb_assert(type <= unsigned char);
-        *p++ = (unsigned char) type;
-        fb_assert(length <= unsigned char);
-        *p++ = (unsigned char) length;
-        while (length--)
-        {
-          *p++ = *q++;
-        }
-      }
-      break;
-    }
+  /* Create connection string */
+  snprintf(connection_string, sizeof(connection_string), "%s:%s", serv->target->NameIP(), database);
 
-  default:
-    return FB_FAILURE;
+  if (isc_attach_database(status, 0, connection_string, &db, dpb_length, dpb)) {
+    /* for debugging perpose */
+    //if (verbose) {
+    //  hydra_report(stderr, "[VERBOSE] ");
+    //  isc_print_status(status);
+    //}
+    isc_free(dpb);
+    //hydra_completed_pair();
+    //if (memcmp(hydra_get_next_pair(), &HYDRA_EXIT, sizeof(HYDRA_EXIT)) == 0)
+    return 2;
+  } else {
+    isc_detach_database(status, &db);
+    isc_free(dpb);
+    //hydra_report_found_host(port, ip, "firebird", fp);
+    //hydra_completed_pair_found();
+    //if (memcmp(hydra_get_next_pair(), &HYDRA_EXIT, sizeof(HYDRA_EXIT)) == 0)
+    return 1;
   }
-  *dpb_size = p - new_dpb;
-  *dpb = (signed char*) new_dpb;
-
-  return FB_SUCCESS;
 }
-//---------------------------------------------------------------
-
-
-
-
-//----------------------------gds__free--------------------------
-unsigned long API_ROUTINE gds__free(void* blk)
-{
-  getDefaultMemoryPool()->deallocate(blk);
-  return 0;
-}
-//---------------------------------------------------------------
-
-//-----------------isc_free--------------------------------------
-signed long API_ROUTINE isc_free(signed char *blk)
-{
-
-  return gds__free(blk);
-}
-//---------------------------------------------------------------
-
-
-//------------------------isc_attach_database--------------------
-ISC_STATUS API_ROUTINE isc_attach_database(ISC_STATUS* userStatus, signed short fileLength,
-  const TEXT* filename, FB_API_HANDLE* publicHandle, signed short dpbLength, const signed char* dpb)
-{
-  StatusVector status(userStatus);
-  CheckStatusWrapper statusWrapper(&status);
-
-  try
-  {
-    nullCheck(publicHandle, isc_bad_db_handle);
-
-    //if (!filename)
-    //  status_exception::raise(Arg::Gds(isc_bad_db_format) << Arg::Str(""));
-
-    PathName pathName(filename, fileLength ? fileLength : fb_strlen(filename));
-
-    RefPtr<Dispatcher> dispatcher(FB_NEW Dispatcher);
-
-    dispatcher->setDbCryptCallback(&statusWrapper, TLS_GET(legacyCryptCallback));
-    if (status.getState() & Firebird::IStatus::STATE_ERRORS)
-      return status[1];
-
-    YAttachment* attachment = dispatcher->attachDatabase(&statusWrapper, pathName.c_str(),
-      dpbLength, reinterpret_cast<const unsigned char*>(dpb));
-    if (status.getState() & Firebird::IStatus::STATE_ERRORS)
-      return status[1];
-
-    *publicHandle = attachment->getHandle();
-  }
-  catch (const Exception& e)
-  {
-    e.stuffException(&statusWrapper);
-  }
-
-  return status[1];
-}
-//---------------------------------------------------------------
-
-
-
-//-----------------------------isc_detach_database---------------
-
-ISC_STATUS API_ROUTINE isc_detach_database(ISC_STATUS* userStatus, FB_API_HANDLE* handle)
-{
-  StatusVector status(userStatus);
-  CheckStatusWrapper statusWrapper(&status);
-
-  try
-  {
-    RefPtr<YAttachment> attachment(translateHandle(attachments, handle));
-    attachment->detach(&statusWrapper);
-
-    if (!(status.getState() & Firebird::IStatus::STATE_ERRORS))
-      *handle = 0;
-  }
-  catch (const Exception& e)
-  {
-    e.stuffException(&statusWrapper);
-  }
-
-  return status[1];
-}
-
-//---------------------------------------------------------------
-
-
-
-static int
-firebird_loop_read(nsock_pool nsp, Connection *con)
-{
-  if ((con->inbuf == NULL) || !memsearch((const char *)con->inbuf->get_dataptr(), "Symmetric\n", con->inbuf->get_len())) {
-    nsock_read(nsp, con->niod, ncrack_read_handler, FB_TIMEOUT, con);
-    return -1;
-  }
-
-  return 0;
-}
+#endif
 
 void
 ncrack_firebird(nsock_pool nsp, Connection *con)
 {
-  //nsock_iod nsi = con->niod;
-  char database[256];
-  char connection_string[1024];
-	int ret;
-  isc_db_handle db;
-  ISC_STATUS_ARRAY status;
-  signed char *dpb = NULL;
-  short dpb_length = 0;
-  Service *serv=0; 
+  nsock_iod nsi = con->niod;
 	
 	switch(con->state)
   {
-    
     case FB_INIT:
-    
-    	strncpy(database, DEFAULT_DB, sizeof(database));
-    	database[sizeof(database)-1] = 0;
-    
     	if (con->outbuf) 
       	delete con->outbuf;
     	con->outbuf = new Buf();
+      fb_connection(con);
       
-      dpb_length=(short) (1+ strlen(con->user) + 2 + strlen(con->pass) + 2);  
-      if ((dpb = (signed char *) malloc(dpb_length)) == NULL)  //no database data found
-      {
-        printf("Invalid database path");
-      }
-			*dpb = isc_dpb_version1;
-			dpb_length=1;
-      //isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, "%s" , strlen(con->user));
-      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_user_name, con->user , strlen(con->user));
-      isc_modify_dpb(&dpb, &dpb_length, isc_dpb_password, con->pass, strlen(con->pass));
- 			snprintf(connection_string, sizeof(connection_string), "%s:%s", serv->target->NameIP(), database);
-      //con->outbuf->snprintf(sizeof(serv->target->NameIP()) + sizeof(database), "%s:%s", serv->target->NameIP(), database);
-	 		//nsock_write(nsp, nsi, ncrack_write_handler, FB_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
+	 		nsock_write(nsp, nsi, ncrack_write_handler, FB_TIMEOUT, con, (const char *)con->outbuf->get_dataptr(), con->outbuf->get_len());
       con->state = FB_USER;
      
-      if(isc_attach_database(status, 0, connection_string, &db, dpb_length, dpb)) {
-        isc_free(dpb);
-				if ((ret = firebird_loop_read(nsp, con)) == 0)
-					break;
-			else {
-        isc_detach_database(status, &db);
-        isc_free(dpb);
+    case FB_USER:
+      if(fb_connection(con)<1) 
+				//if ((ret = firebird_loop_read(nsp, con)) == 0)
+			  break;
+			else 
 				con->auth_success = true;
-				}
-			}
+      con->state = FB_INIT;
+				
       return ncrack_module_end(nsp, con);
    } 
 }
-
